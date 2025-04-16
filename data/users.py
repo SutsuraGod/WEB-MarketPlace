@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.orm import relationship
 import datetime
 from flask_login import UserMixin
 from .db_session import SqlAlchemyBase
@@ -13,6 +14,8 @@ class Users(SqlAlchemyBase, UserMixin, SerializerMixin):
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.datetime.now)
+
+    ads = relationship("Ads", back_populates="author")
 
     def __repr__(self):
         return f"<User> {self.id} {self.username}"
