@@ -17,3 +17,5 @@ class Ads(SqlAlchemyBase, SerializerMixin):
     modified_at = Column(DateTime, nullable=False, default=datetime.datetime.now)
 
     author = relationship("Users", back_populates="ads")
+    reviews = relationship("Reviews", back_populates="ad")
+    images = relationship("Images", back_populates="ad")

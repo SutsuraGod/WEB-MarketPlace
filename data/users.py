@@ -16,6 +16,7 @@ class Users(SqlAlchemyBase, UserMixin, SerializerMixin):
     created_at = Column(DateTime, nullable=False, default=datetime.datetime.now)
 
     ads = relationship("Ads", back_populates="author")
+    reviews = relationship("Reviews", back_populates="author")
 
     def __repr__(self):
         return f"<User> {self.id} {self.username}"
