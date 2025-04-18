@@ -14,5 +14,6 @@ class Reviews(SqlAlchemyBase, SerializerMixin):
     comment = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.now)
 
+    # отношения между остальными таблицами
     author = relationship('Users', back_populates='reviews')
     ad = relationship('Ads', back_populates='reviews')

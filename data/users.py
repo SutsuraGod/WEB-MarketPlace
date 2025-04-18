@@ -15,14 +15,18 @@ class Users(SqlAlchemyBase, UserMixin, SerializerMixin):
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.datetime.now)
 
+    # отношения между остальными таблицами
     ads = relationship("Ads", back_populates="author")
     reviews = relationship("Reviews", back_populates="author")
 
     def __repr__(self):
+        '''Изменение формата вывода пользователя в консоль'''
         return f"<User> {self.id} {self.username}"
 
     def set_password(self, password):
+        '''Хеширование и сохранение пароля'''
         self.hashed_password = generate_password_hash(password)
 
     def check_password(self, password):
+        '''Проверка на валидность введенного пароля'''
         return check_password_hash(self.hashed_password, password)

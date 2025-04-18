@@ -10,4 +10,5 @@ class Images(SqlAlchemyBase, SerializerMixin):
     ad_id = Column(Integer, ForeignKey('ads.id'))
     image_path = Column(String, nullable=False)
 
+    # отношения между остальными таблицами
     ad = relationship('Ads', backref='images')

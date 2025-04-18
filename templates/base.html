@@ -14,7 +14,7 @@
 <header>
     <nav class="navbar navbar-light bg-light">
         <div class="logo">
-            <h2>Маркетплейс</h2>
+            <a href="/" class="plain-link"><h2>Маркетплейс</h2></a>
         </div>
 
         {% if current_user.is_authenticated %}
@@ -26,6 +26,12 @@
         </p>
         {% endif %}
     </nav>
+
+    <div>
+        <form action="/search" method="GET" class="search-bar">
+            <input class="search-input" type="text" name="q" placeholder="Поиск товаров...">
+        </form>
+    </div>
 </header>
 
 <main class="container" role="main">
