@@ -1,6 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-import datetime
 from .db_session import SqlAlchemyBase
 from sqlalchemy_serializer import SerializerMixin
 
