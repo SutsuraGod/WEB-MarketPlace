@@ -19,3 +19,4 @@ class Ads(SqlAlchemyBase, SerializerMixin):
     author = relationship("Users", back_populates="ads")
     reviews = relationship("Reviews", back_populates="ad")
     images = relationship("Images", back_populates="ad")
+    categories = relationship("Categories", secondary="ads_to_categories", back_populates="ad")
