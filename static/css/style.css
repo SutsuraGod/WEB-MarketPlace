@@ -7,6 +7,14 @@
 
 /* изменение внешности поисковой строки */
 .search-bar {
-    text-align: center;
-    width: 800px;
+    display: flex;
+    justify-content: center;
+    padding: 50px;
+    top: 6%;
+    left: 23%;
+}
+
+.search-input {
+    width: 1000px;
+    height: 40px;
 }
