@@ -1,12 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="search-bar">
-    <form action="/search" method="GET">
-        <input type="text" name="q" placeholder="Поиск товаров...">
-    </form>
-</div>
-
 <main class="container">
     {% for product in products %}
     <div class="product-card">

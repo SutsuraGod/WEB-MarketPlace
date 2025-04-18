@@ -1,0 +1,12 @@
+/* изменение внешности кнопки "Маркетплейс" */
+.plain-link {
+    text-decoration: none;
+    color: inherit;
+    cursor: default;
+}
+
+/* изменение внешности поисковой строки */
+.search-bar {
+    text-align: center;
+    width: 800px;
+}
