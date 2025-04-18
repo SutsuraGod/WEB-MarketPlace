@@ -6,8 +6,8 @@ from sqlalchemy_serializer import SerializerMixin
 association_table = Table(
     'ads_to_categories',
     SqlAlchemyBase.metadata,
-    Column('ad_id', ForeignKey('ads.id'), primary_key=True),
-    Column('category_id', ForeignKey('categories.id'), primary_key=True)
+    Column('ad', Integer, ForeignKey('ads.id'), primary_key=True),
+    Column('category', Integer, ForeignKey('categories.id'), primary_key=True)
 )
 
 
