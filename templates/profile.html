@@ -40,7 +40,7 @@
         margin-top: 10px;
     }
 
-    h1 {
+    .ads-text {
         text-align: center;
         margin-top: 40px;
         color: #1f2937;
@@ -99,9 +99,12 @@
     <div class="profile-name">{{ user.username }}</div>
     <div class="profile-email">Почта: {{ user.email }}</div>
     <div class="profile-created">Дата регистрации: {{ user.created_at.strftime('%d.%m.%Y') }}</div>
+    {% if current_user.id == user.id %}
+        <div class="profile-exit"><a href="/logout" class="btn btn-danger">Выйти</a></div>
+    {% endif %}
 </div>
 
-<h1>Ваши объявления:</h1>
+<h2 class="ads-text">Ваши объявления:</h2>
 {% for item in ads %}
     <div class="ads-item">
         <h2>{{ item.title }}</h2>
@@ -113,4 +116,5 @@
         </div>
     </div>
 {% endfor %}
+
 {% endblock %}

@@ -90,5 +90,15 @@ def login_page():
     return render_template('login.html', title='Авторизация', form=form)
 
 
+@app.route("/profile/<user_id>")
+@login_required
+def profile_page(user_id):
+    '''Обработчки профиля страницы'''
+    session = db_session.create_session()
+    # получения id пользователя
+    user = session.query(Users).get(user_id)
+    return render_template("profile.html", title="Профиль пользователя", user=user)
+
+
 if __name__ == '__main__':
     main()
