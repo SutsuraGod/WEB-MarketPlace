@@ -1,0 +1,6 @@
+/* изменение внешности кнопки "Маркетплейс" */
+.plain-link {
+    text-decoration: none;
+    color: inherit;
+    cursor: default;
+}
