@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<title>Профиль пользователя</title>
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -47,7 +46,7 @@
         color: #1f2937;
     }
 
-    .news-item {
+    .ads-item {
         max-width: 700px;
         margin: 20px auto;
         background: white;
@@ -57,18 +56,18 @@
         border-left: 5px solid #6366f1;
     }
 
-    .news-item h2 {
+    .ads-item h2 {
         font-size: 20px;
         color: #111827;
         margin-bottom: 10px;
     }
 
-    .news-item div {
+    .ads-item div {
         margin-bottom: 8px;
         color: #374151;
     }
 
-    .news-item a.btn {
+    .ads-item a.btn {
         display: inline-block;
         margin-right: 10px;
         padding: 6px 14px;
@@ -104,13 +103,13 @@
 
 <h1>Ваши объявления:</h1>
 {% for item in ads %}
-    <div class="news-item">
+    <div class="ads-item">
         <h2>{{ item.title }}</h2>
         <div>{{ item.content }}</div>
         <div>Дата публикации — {{ item.created_at.strftime('%d.%m.%Y, %H:%M') }}</div>
         <div>
-            <a href="/news/{{ item.id }}" class="btn btn-warning">Изменить</a>
-            <a href="/news_delete/{{ item.id }}" class="btn btn-danger">Удалить</a>
+            <a href="/ads/{{ item.id }}" class="btn btn-warning">Изменить</a>
+            <a href="/ads_delete/{{ item.id }}" class="btn btn-danger">Удалить</a>
         </div>
     </div>
 {% endfor %}
