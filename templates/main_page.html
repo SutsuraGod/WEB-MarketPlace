@@ -1,7 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+/* изменение внешности кнопки "Маркетплейс" */
+.plain-link {
+    text-decoration: none;
+    color: inherit;
+    cursor: default;
+}
+
+/* изменение внешности поисковой строки */
+.search-bar {
+    display: flex;
+    justify-content: center;
+    padding: 50px;
+    top: 6%;
+    left: 23%;
+}
+
+/* изменение размеров поисковой строки */
+.search-input {
+    width: 1000px;
+    height: 40px;
+}
+</style>
+
 <main class="container">
+    <div>
+        <form action="/search" method="GET" class="search-bar">
+            <input class="search-input" type="text" name="q" placeholder="Поиск товаров...">
+        </form>
+    </div>
+
     {% for product in products %}
     <div class="product-card">
         <img src="{{ product.image_url }}" alt="{{ product.name }}">
