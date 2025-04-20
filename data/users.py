@@ -18,6 +18,7 @@ class Users(SqlAlchemyBase, UserMixin, SerializerMixin):
     # отношения между остальными таблицами
     ads = relationship("Ads", back_populates="author")
     reviews = relationship("Reviews", back_populates="author")
+    avatars = relationship("Avatars", back_populates="user")
 
     def __repr__(self):
         '''Изменение формата вывода пользователя в консоль'''

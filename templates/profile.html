@@ -95,10 +95,10 @@
 </style>
 
 <div class="profile-container">
-    <img src="{{ user.photo_url }}" alt="Фото пользователя" class="profile-photo" />
+    <img src="{{ image_path }}" alt="Фото пользователя" class="profile-photo" />
     <div class="profile-name">{{ user.username }}</div>
     <div class="profile-email">Почта: {{ user.email }}</div>
-    <div class="profile-created">Дата регистрации: {{ user.created_at.strftime('%d.%m.%Y') }}</div>
+    <div class="profile-created">Дата регистрации: {{ user.created_at.strftime('%d.%m.%Y') if user else "Нет даты" }}</div>
     {% if current_user.id == user.id %}
         <div class="profile-exit"><a href="/logout" class="btn btn-danger">Выйти</a></div>
     {% endif %}

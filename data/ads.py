@@ -13,7 +13,7 @@ class Ads(SqlAlchemyBase, SerializerMixin):
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
     price = Column(Integer, nullable=False)
-    category = Column(String, nullable=False)
+    category = Column(Integer, ForeignKey('categories.id'), nullable=False)
     city = Column(String, nullable=False)
     modified_at = Column(DateTime, nullable=False, default=datetime.datetime.now)
 
@@ -21,4 +21,4 @@ class Ads(SqlAlchemyBase, SerializerMixin):
     author = relationship("Users", back_populates="ads")
     reviews = relationship("Reviews", back_populates="ad")
     images = relationship("Images", back_populates="ad")
-    categories = relationship("Categories", secondary="ads_to_categories", backref="ads")
+    categories = relationship("Categories", backref="ad")

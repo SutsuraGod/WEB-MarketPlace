@@ -2,14 +2,6 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Table
 from .db_session import SqlAlchemyBase
 from sqlalchemy_serializer import SerializerMixin
 
-# промежуточная таблица
-association_table = Table(
-    'ads_to_categories',
-    SqlAlchemyBase.metadata,
-    Column('ad', Integer, ForeignKey('ads.id'), primary_key=True),
-    Column('category', Integer, ForeignKey('categories.id'), primary_key=True)
-)
-
 
 class Categories(SqlAlchemyBase, SerializerMixin):
     '''Таблица категорий'''

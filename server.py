@@ -3,6 +3,7 @@ from flask_login import LoginManager, login_user, login_required, current_user, 
 from flask_restful import Api
 from data import db_session
 from data.users import Users
+from data.avatars import Avatars
 from forms.login_form import LoginForm, RegisterForm
 
 app = Flask(__name__)
@@ -95,9 +96,10 @@ def login_page():
 def profile_page(user_id):
     '''Обработчки профиля страницы'''
     session = db_session.create_session()
-    # получения id пользователя
+    # получения id пользователя и пути до картинки аватара
     user = session.query(Users).get(user_id)
-    return render_template("profile.html", title="Профиль пользователя", user=user)
+    image_path = session.query(Avatars.image_path).filter(Avatars.user_id == user_id).first()
+    return render_template("profile.html", title="Профиль пользователя", user=user, image_path=image_path)
 
 
 if __name__ == '__main__':
