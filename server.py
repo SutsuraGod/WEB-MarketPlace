@@ -1,16 +1,23 @@
+import os
 from flask import Flask, render_template, redirect, abort, request, make_response, jsonify
 from flask_login import LoginManager, login_user, login_required, current_user, logout_user
 from flask_restful import Api
 from data import db_session
 from data.users import Users
 from data.avatars import Avatars
+from data.ads import Ads
+from data.images import Images
 from forms.login_form import LoginForm, RegisterForm
+from forms.ad_form import AdForm
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 api = Api(app)
 
 # секретный ключ для защиты
 app.config['SECRET_KEY'] = 'webservicekey'
+# папка для загрузки фотографий
+app.config["UPLOAD_FOLDER"] = "static/img"
 
 # объект класса для регистрации и авторизации пользователя
 login_manager = LoginManager()
@@ -100,6 +107,47 @@ def profile_page(user_id):
     user = session.query(Users).get(user_id)
     image_path = session.query(Avatars.image_path).filter(Avatars.user_id == user_id).first()
     return render_template("profile.html", title="Профиль пользователя", user=user, image_path=image_path)
+
+
+@app.route("/create_ad", methods=["GET", "POST"])
+@login_required
+def create_ad():
+    '''Обработчик создания объявления'''
+    form = AdForm()
+    if form.validate_on_submit():
+        session = db_session.create_session()
+        ad = Ads(
+            user_id=current_user.id,
+            title=form.title.data,
+            description=form.description.data,
+            price=form.price.data,
+            category=int(form.categories.data),
+            city=form.city.data
+        )
+        session.add(ad)
+        session.commit()
+
+        # загрузка файлов на сервер
+        uploaded_file = form.images.data
+
+        if len(uploaded_file) > 5:
+            return render_template("create_ad.html", title="Создание объявления", form=form,
+                                   message="Можно загрузить не больше 5 изображений")
+
+        for file in uploaded_file:
+            if file:
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                file.save(filepath)
+                image = Images(
+                    ad_id=ad.id,
+                    image_path=filepath
+                )
+                session.add(image)
+                session.commit()
+
+        return redirect("/")
+    return render_template("create_ad.html", title="Создание объявления", form=form)
 
 
 if __name__ == '__main__':
