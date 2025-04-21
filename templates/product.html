@@ -1,5 +1,6 @@
-<title>{{ product.title }} — Объявление</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "base.html" %}
+
+{% block content %}
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -127,3 +128,4 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
