@@ -17,7 +17,7 @@ api = Api(app)
 # секретный ключ для защиты
 app.config['SECRET_KEY'] = 'webservicekey'
 # папка для загрузки фотографий
-app.config["UPLOAD_FOLDER"] = "static/img"
+app.config["UPLOAD_FOLDER"] = "static\img"
 
 # объект класса для регистрации и авторизации пользователя
 login_manager = LoginManager()
