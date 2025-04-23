@@ -108,8 +108,8 @@
 {% for item in ads %}
     <div class="ads-item">
         <h2>{{ item.title }}</h2>
-        <div>{{ item.content }}</div>
-        <div>Дата публикации — {{ item.created_at.strftime('%d.%m.%Y, %H:%M') }}</div>
+        <div>{{ item.description[:80] }}</div>
+        <div>Дата публикации — {{ item.modified_at.strftime('%d.%m.%Y, %H:%M') }}</div>
         <div>
             <a href="/ads/{{ item.id }}" class="btn btn-warning">Изменить</a>
             <a href="/ads_delete/{{ item.id }}" class="btn btn-danger">Удалить</a>

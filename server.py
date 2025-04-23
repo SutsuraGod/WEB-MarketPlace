@@ -17,7 +17,7 @@ api = Api(app)
 # секретный ключ для защиты
 app.config['SECRET_KEY'] = 'webservicekey'
 # папка для загрузки фотографий
-app.config["UPLOAD_FOLDER"] = "static\img"
+app.config["UPLOAD_FOLDER"] = "static/img"
 
 # объект класса для регистрации и авторизации пользователя
 login_manager = LoginManager()
@@ -49,7 +49,9 @@ def user_loader(user_id):
 @app.route('/')
 def main_page():
     '''Обработчик главной страницы'''
-    return render_template("main_page.html", title="Маркетплейс", products=[])
+    session = db_session.create_session()
+    ads = session.query(Ads).all()
+    return render_template("main_page.html", title="Маркетплейс", ads=ads)
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -105,8 +107,9 @@ def profile_page(user_id):
     session = db_session.create_session()
     # получения id пользователя и пути до картинки аватара
     user = session.query(Users).get(user_id)
+    ads = session.query(Ads).all()
     image_path = session.query(Avatars.image_path).filter(Avatars.user_id == user_id).first()
-    return render_template("profile.html", title="Профиль пользователя", user=user, image_path=image_path)
+    return render_template("profile.html", title="Профиль пользователя", user=user, image_path=image_path, ads=ads)
 
 
 @app.route("/create_ad", methods=["GET", "POST"])
