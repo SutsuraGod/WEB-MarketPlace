@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template, redirect, abort, request, make_response, jsonify
 from flask_login import LoginManager, login_user, login_required, current_user, logout_user
 from flask_restful import Api
+from sqlalchemy.sql.expression import func
 from data import db_session
 from data.users import Users
 from data.avatars import Avatars
@@ -10,6 +11,7 @@ from data.images import Images
 from forms.login_form import LoginForm, RegisterForm
 from forms.ad_form import AdForm
 from werkzeug.utils import secure_filename
+
 
 app = Flask(__name__)
 api = Api(app)
@@ -101,7 +103,6 @@ def login_page():
 
 
 @app.route("/profile/<user_id>")
-@login_required
 def profile_page(user_id):
     '''Обработчки профиля страницы'''
     session = db_session.create_session()
@@ -127,8 +128,6 @@ def create_ad():
             category=int(form.categories.data),
             city=form.city.data
         )
-        session.add(ad)
-        session.commit()
 
         # загрузка файлов на сервер
         uploaded_file = form.images.data
@@ -137,20 +136,90 @@ def create_ad():
             return render_template("create_ad.html", title="Создание объявления", form=form,
                                    message="Можно загрузить не больше 5 изображений")
 
+        session.add(ad)
+        session.commit()
+
+        file_count = session.query(func.max(Images.id)).scalar() if session.query(Images).all() else 0
+
         for file in uploaded_file:
             if file:
-                filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                file_count += 1
+                filename = f"{file_count}.{file.filename.split('.')[-1].lower()}"
+                secure_name = secure_filename(filename)
+                filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_name)
                 file.save(filepath)
                 image = Images(
                     ad_id=ad.id,
                     image_path=filepath
                 )
+                print(image)
                 session.add(image)
                 session.commit()
 
         return redirect("/")
     return render_template("create_ad.html", title="Создание объявления", form=form)
+
+
+@app.route("/edit_ad/<int:ad_id>", methods=["GET", "POST"])
+@login_required
+def edit_ad(ad_id):
+    session = db_session.create_session()
+    # получение текущих фотографий
+    images_paths = session.query(Images.image_path).filter(Images.ad_id == ad_id).all()
+    form = AdForm()
+    # добавление их в форму
+    form.images_paths = images_paths
+    if request.method == "GET":
+        ad = session.query(Ads).filter(Ads.id == ad_id).first()
+        if not ad or current_user.id != ad.user_id: # проверка на валидность данных
+            abort(404)
+        # установка в поля формы данных
+        form.title.data = ad.title
+        form.description.data = ad.description
+        form.price.data = ad.price
+        form.categories.data = str(ad.category)
+        form.city.data = ad.city
+    if form.validate_on_submit():
+        session = db_session.create_session()
+        ad = session.query(Ads).filter(Ads.id == ad_id).first()
+        if ad:
+            # изменение данных
+            ad.title = form.title.data
+            ad.description = form.description.data
+            ad.price = form.price.data
+            ad.category = int(form.categories.data)
+            ad.city = form.city.data
+
+            # загрузка файлов на сервер
+            uploaded_file = [file for file in form.images.data if file and file.filename]
+            if uploaded_file:
+                if len(uploaded_file) > 5:
+                    return render_template("create_ad.html", title="Создание объявления", form=form,
+                                           message="Можно загрузить не больше 5 изображений")
+
+                # получение максимального id
+                file_count = session.query(func.max(Images.id)).scalar() if session.query(Images).all() else 0
+                # удаление старых фото
+                session.query(Images).filter(Images.ad_id == ad_id).delete()
+                session.add(ad)
+                session.commit()
+
+                for file in uploaded_file:
+                    if file:
+                        file_count += 1
+                        filename = f"{file_count}.{file.filename.split('.')[-1].lower()}"
+                        secure_name = secure_filename(filename)
+                        filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_name)
+                        file.save(filepath)
+                        image = Images(
+                            ad_id=ad.id,
+                            image_path=filepath
+                        )
+                        session.add(image)
+                        session.commit()
+
+        return redirect("/")
+    return render_template("create_ad.html", title="Изменение объявления", form=form)
 
 
 if __name__ == '__main__':
