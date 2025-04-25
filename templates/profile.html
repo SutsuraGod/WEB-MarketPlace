@@ -113,7 +113,7 @@
         {% if current_user.id == user.id %}
             <div>
                 <a href="/edit_ad/{{ item.id }}" class="btn btn-warning">Изменить</a>
-                <a href="/ads_delete/{{ item.id }}" class="btn btn-danger">Удалить</a>
+                <a href="/delete_ad/{{ item.id }}" class="btn btn-danger">Удалить</a>
             </div>
         {% endif %}
     </div>
