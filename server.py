@@ -11,6 +11,7 @@ from forms.login_form import LoginForm, RegisterForm
 from forms.ad_form import AdForm
 from werkzeug.utils import secure_filename
 
+
 app = Flask(__name__)
 api = Api(app)
 
@@ -42,15 +43,15 @@ def logout():
 @login_manager.user_loader
 def user_loader(user_id):
     '''Создание сессии пользователя'''
-    session = db_session.create_session()
-    return session.query(Users).get(user_id)
+    with db_session.create_session() as session:
+        return session.query(Users).get(user_id)
 
 
 @app.route('/')
 def main_page():
     '''Обработчик главной страницы'''
-    session = db_session.create_session()
-    ads = session.query(Ads).all()
+    with db_session.create_session() as session:
+        ads = session.query(Ads).all()
     return render_template("main_page.html", title="Маркетплейс", ads=ads)
 
 
@@ -59,25 +60,24 @@ def register_page():
     '''Обработчик страницы регистрации'''
     form = RegisterForm()
     if form.validate_on_submit():
-        session = db_session.create_session()
+        with db_session.create_session() as session:
+            # проверка на существование пользователя
+            if session.query(Users).filter(Users.email == form.email.data).first():
+                return render_template("register.html", title="Регистрация", message="Такой пользователь уже существует",
+                                       form=form)
 
-        # проверка на существование пользователя
-        if session.query(Users).filter(Users.email == form.email.data).first():
-            return render_template("register.html", title="Регистрация", message="Такой пользователь уже существует",
-                                   form=form)
+            # создание пользователя
+            user = Users(
+                username=form.username.data,
+                email=form.email.data
+            )
+            user.set_password(form.password.data)
 
-        # создание пользователя
-        user = Users(
-            username=form.username.data,
-            email=form.email.data
-        )
-        user.set_password(form.password.data)
+            session.add(user)
 
-        session.add(user)
+            logout_user()
 
-        logout_user()
-
-        session.commit()
+            session.commit()
         # перенаправление пользователя на страницы авторизации
         return redirect("/login")
     return render_template("register.html", title="Регистрация", form=form)
@@ -88,8 +88,8 @@ def login_page():
     '''Обработчик страницы авторизации'''
     form = LoginForm()
     if form.validate_on_submit():
-        session = db_session.create_session()
-        user = session.query(Users).filter(Users.email == form.email.data).first()
+        with db_session.create_session() as session:
+            user = session.query(Users).filter(Users.email == form.email.data).first()
 
         if user and user.check_password(form.password.data):  # проверка на валидность введенных данных
             # авторизация пользователя и дальнейшее перенаправление его на главную страницу
@@ -101,14 +101,14 @@ def login_page():
 
 
 @app.route("/profile/<user_id>")
-@login_required
 def profile_page(user_id):
     '''Обработчки профиля страницы'''
-    session = db_session.create_session()
-    # получения id пользователя и пути до картинки аватара
-    user = session.query(Users).get(user_id)
-    ads = session.query(Ads).all()
-    image_path = session.query(Avatars.image_path).filter(Avatars.user_id == user_id).first()
+    with db_session.create_session() as session:
+        # получения id пользователя и пути до картинки аватара
+        user = session.query(Users).get(user_id)
+        ads = session.query(Ads).filter(Ads.user_id == user.id).all()
+        image_path = session.query(Avatars.image_path).filter(Avatars.user_id == user_id).first()
+
     return render_template("profile.html", title="Профиль пользователя", user=user, image_path=image_path, ads=ads)
 
 
@@ -118,39 +118,145 @@ def create_ad():
     '''Обработчик создания объявления'''
     form = AdForm()
     if form.validate_on_submit():
-        session = db_session.create_session()
-        ad = Ads(
-            user_id=current_user.id,
-            title=form.title.data,
-            description=form.description.data,
-            price=form.price.data,
-            category=int(form.categories.data),
-            city=form.city.data
-        )
-        session.add(ad)
-        session.commit()
+        with db_session.create_session() as session:
+            ad = Ads(
+                user_id=current_user.id,
+                title=form.title.data,
+                description=form.description.data,
+                price=form.price.data,
+                category=int(form.categories.data),
+                city=form.city.data
+            )
 
-        # загрузка файлов на сервер
-        uploaded_file = form.images.data
+            # загрузка файлов на сервер
+            uploaded_file = form.images.data
 
-        if len(uploaded_file) > 5:
-            return render_template("create_ad.html", title="Создание объявления", form=form,
-                                   message="Можно загрузить не больше 5 изображений")
+            if len(uploaded_file) > 5:
+                return render_template("create_ad.html", title="Создание объявления", form=form,
+                                       message="Можно загрузить не больше 5 изображений")
 
-        for file in uploaded_file:
-            if file:
-                filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-                file.save(filepath)
-                image = Images(
-                    ad_id=ad.id,
-                    image_path=filepath
-                )
-                session.add(image)
-                session.commit()
+            session.add(ad)
+            session.commit()
+
+            # получения максимального числа в названиях файлов
+            listdir = os.listdir(app.config["UPLOAD_FOLDER"])
+            file_count = max([int(i.split(".")[0]) for i in listdir]) if listdir else 0
+
+            for file in uploaded_file:
+                if file:
+                    file_count += 1
+                    filename = f"{file_count}.{file.filename.split('.')[-1].lower()}"
+                    secure_name = secure_filename(filename)
+                    filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_name)
+                    file.save(filepath)
+                    image = Images(
+                        ad_id=ad.id,
+                        image_path=filepath
+                    )
+                    print(image)
+                    session.add(image)
+            session.commit()
 
         return redirect("/")
     return render_template("create_ad.html", title="Создание объявления", form=form)
+
+
+@app.route("/edit_ad/<int:ad_id>", methods=["GET", "POST"])
+@login_required
+def edit_ad(ad_id):
+    '''Обработчик изменения объявления'''
+    with db_session.create_session() as session:
+        # получение текущих фотографий
+        images_paths = session.query(Images).filter(Images.ad_id == ad_id).all()
+
+    form = AdForm()
+
+    # добавление их в форму
+    form.images_paths = images_paths
+
+    if request.method == "GET":
+        with db_session.create_session() as session:
+            ad = session.query(Ads).filter(Ads.id == ad_id).first()
+
+        if not ad or current_user.id != ad.user_id: # проверка на валидность данных
+            abort(404)
+        # установка в поля формы данных
+        form.title.data = ad.title
+        form.description.data = ad.description
+        form.price.data = ad.price
+        form.categories.data = str(ad.category)
+        form.city.data = ad.city
+
+    if form.validate_on_submit():
+        with db_session.create_session() as session:
+            ad = session.query(Ads).filter(Ads.id == ad_id).first()
+            if ad:
+                # изменение данных
+                ad.title = form.title.data
+                ad.description = form.description.data
+                ad.price = form.price.data
+                ad.category = int(form.categories.data)
+                ad.city = form.city.data
+
+                # сохранение изменений
+                session.add(ad)
+                session.commit()
+
+                # загрузка файлов на сервер
+                uploaded_file = [file for file in form.images.data if file and file.filename]
+                if uploaded_file:
+                    if len(uploaded_file) > 5:
+                        return render_template("create_ad.html", title="Создание объявления", form=form,
+                                               message="Можно загрузить не больше 5 изображений")
+
+                    # получение максимального числа в названиях файлов
+                    listdir = os.listdir(app.config["UPLOAD_FOLDER"])
+                    file_count = max([int(i.split(".")[0]) for i in listdir]) if listdir else 0
+
+                    # удаление старых фото
+                    for image in images_paths:
+                        if os.path.exists(image.image_path):
+                            os.remove(image.image_path)
+                    session.query(Images).filter(Images.ad_id == ad_id).delete()
+
+                    # загрузка новых фотографий
+                    for file in uploaded_file:
+                        if file:
+                            file_count += 1
+                            filename = f"{file_count}.{file.filename.split('.')[-1].lower()}"
+                            secure_name = secure_filename(filename)
+                            filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_name)
+                            file.save(filepath)
+                            image = Images(
+                                ad_id=ad.id,
+                                image_path=filepath
+                            )
+                            session.add(image)
+
+                    session.commit()
+
+        return redirect("/")
+    return render_template("create_ad.html", title="Изменение объявления", form=form)
+
+
+@app.route("/delete_ad/<int:ad_id>", methods=["GET", "POST"])
+@login_required
+def delete_ad(ad_id):
+    with db_session.create_session() as session:
+        ad = session.query(Ads).filter(Ads.id == ad_id).first()
+        images = session.query(Images).filter(Images.ad_id == ad_id).all()
+
+        if not ad:
+            abort(404)
+        else:
+            for image in images:
+                if os.path.exists(image.image_path):
+                    os.remove(image.image_path)
+            session.query(Images).filter(Images.ad_id == ad_id).delete()
+            session.delete(ad)
+            session.commit()
+
+    return redirect(f"/profile/{current_user.id}")
 
 
 if __name__ == '__main__':
