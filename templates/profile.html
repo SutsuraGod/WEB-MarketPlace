@@ -107,7 +107,7 @@
 <h2 class="ads-text">Ваши объявления:</h2>
 {% for item in ads %}
     <div class="ads-item">
-        <h2>{{ item.title }}</h2>
+        <h2><a href="/ads/{{ item.id }}" class="plain-link">{{ item.title }}</a></h2>
         <div>{{ item.description[:80] }}</div>
         <div>Дата публикации — {{ item.modified_at.strftime('%d.%m.%Y, %H:%M') }}</div>
         {% if current_user.id == user.id %}

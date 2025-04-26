@@ -138,6 +138,29 @@
     .review-text {
         color: #374151;
     }
+
+    .carousel-inner {
+        width: 400px;
+        height: 400px;
+        margin: 0 auto;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .img-original {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+    }
+
+    .carousel-item {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+    }
 </style>
 
 <div class="product-container">
@@ -145,8 +168,8 @@
         <div id="productCarousel" class="carousel slide" data-bs-interval="false">
             <div class="carousel-inner">
                 {% for image in images %}
-                <div class="carousel-item {% if loop.first %}active{% endif %}">
-                    <img src="{{ image }}" class="d-block w-100" alt="Фото {{ loop.index }}">
+                <div class="carousel-item {% if loop.first %}active{% endif %} d-flex justify-content-center align-items-center">
+                    <img src="/{{ image.image_path }}" class="img-original" alt="Фото {{ loop.index }}">
                 </div>
                 {% endfor %}
             </div>
@@ -165,7 +188,7 @@
     <div class="product-title">{{ product.title }}</div>
     <div class="product-meta">
         Артикул: #{{ product.id }} |
-        Категория: {{ product.category }} |
+        Категория: {{ category.category }} |
         Город: {{ product.city }}
     </div>
 
