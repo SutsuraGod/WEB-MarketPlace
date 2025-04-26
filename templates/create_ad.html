@@ -51,6 +51,9 @@
     </p>
     <p>
         {{ form.images.label }}<br>
+        {% for image in images_paths %}
+            <p>{{ image.original_image_path }}</p>
+        {% endfor %}
         {{ form.images(class="form-control") }}<br>
         {% for error in form.images.errors %}
             <div class="alert alert-danger" role="alert">
