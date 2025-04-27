@@ -56,7 +56,15 @@ def main_page():
     '''Обработчик главной страницы'''
     with db_session.create_session() as session:
         ads = session.query(Ads).all()
-    return render_template("main_page.html", title="Маркетплейс", ads=ads)
+        images = []
+        categories = []
+        for ad in ads:
+            image = session.query(Images).filter(Images.ad_id == ad.id).first()
+            images.append(image.image_path)
+            category = session.query(Categories).filter(ad.category == Categories.id).first()
+            categories.append(category.category)
+
+    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories)
 
 
 @app.route("/register", methods=['GET', 'POST'])

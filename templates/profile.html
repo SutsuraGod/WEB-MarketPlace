@@ -96,37 +96,39 @@
 
 <div class="profile-container">
     <img src="/{{ image_path }}" alt="Фото пользователя" class="profile-photo"/>
-    <div class="text-center">
-        <p id="upload-text" class="text-primary text-decoration-underline" style="cursor: pointer;">
-            Сменить аватар
-        </p>
-        <input type="file" id="file-input" accept=".jpg, .jpeg, .png" class="form-control" style="display: none;">
-    </div>
+    {% if current_user.id == user.id %}
+        <div class="text-center">
+            <p id="upload-text" class="text-primary text-decoration-underline" style="cursor: pointer;">
+                Сменить аватар
+            </p>
+            <input type="file" id="file-input" accept=".jpg, .jpeg, .png" class="form-control" style="display: none;">
+        </div>
 
-    <script>
-        const uploadText = document.getElementById('upload-text');
-        const fileInput = document.getElementById('file-input');
+        <script>
+            const uploadText = document.getElementById('upload-text');
+            const fileInput = document.getElementById('file-input');
 
-        uploadText.addEventListener('click', () => {
-            fileInput.click();
-        });
+            uploadText.addEventListener('click', () => {
+                fileInput.click();
+            });
 
-        fileInput.addEventListener('change', () => {
-            const file = fileInput.files[0];
-            if (!file) return;
+            fileInput.addEventListener('change', () => {
+                const file = fileInput.files[0];
+                if (!file) return;
 
-            const formData = new FormData();
-            formData.append('file', file);
+                const formData = new FormData();
+                formData.append('file', file);
 
-            fetch('/upload_avatar', {
-                method: 'POST',
-                body: formData,
-            })
-                .then(response => response.text())
-                .then(data => console.log('Ответ сервера:', data))
-                .catch(error => console.error('Ошибка при загрузке:', error));
-        });
-    </script>
+                fetch('/upload_avatar', {
+                    method: 'POST',
+                    body: formData,
+                })
+                    .then(response => response.text())
+                    .then(data => console.log('Ответ сервера:', data))
+                    .catch(error => console.error('Ошибка при загрузке:', error));
+            });
+        </script>
+    {% endif %}
 
     <div class="profile-name">{{ user.username }}</div>
     <div class="profile-email">Почта: {{ user.email }}</div>
