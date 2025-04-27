@@ -2,36 +2,133 @@
 
 {% block content %}
 <style>
-/* изменение внешности поисковой строки */
-.search-bar {
-    display: flex;
-    justify-content: center;
-    padding: 50px;
-    top: 6%;
-    left: 23%;
-}
+    .search-bar {
+        display: flex;
+        justify-content: center;
+        padding: 40px 0 20px 0;
+    }
 
-/* изменение размеров поисковой строки */
-.search-input {
-    width: 1000px;
-    height: 40px;
-}
+
+    .search-input {
+        width: 600px;
+        height: 42px;
+        padding: 0 15px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 16px;
+    }
+
+    /* Контейнер всей главной части */
+    .main-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+    }
+
+    /* Сетка товаров */
+    .products-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+        margin-top: 30px;
+    }
+
+    /* Карточка товара */
+    .product-card {
+        background-color: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        width: 250px;
+        padding: 16px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        transition: transform 0.3s ease;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+
+    /* Изображение товара */
+    .product-card img {
+        width: 100%;
+        height: 180px;
+        object-fit: contain;
+        background-color: #f9fafb;
+        border-radius: 8px;
+        margin-bottom: 12px;
+    }
+
+    /* Название товара */
+    .product-card h3 {
+        font-size: 20px;
+        margin: 10px 0 5px;
+        color: #111827;
+    }
+
+    /* ID и категория товара */
+    .product-meta {
+        font-size: 14px;
+        color: #6b7280;
+        margin-bottom: 12px;
+    }
+
+    /* Описание товара */
+    .product-card p {
+        font-size: 14px;
+        color: #374151;
+        margin: 4px 0;
+    }
+
+    /* Цена товара */
+    .product-card strong {
+        color: #4f46e5;
+        font-size: 18px;
+    }
+
+    /* Кнопка "Подробнее" */
+    .detail-button {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 8px 14px;
+        background-color: #4f46e5;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+        transition: background-color 0.3s ease;
+    }
+
+    .detail-button:hover {
+        background-color: #4338ca;
+    }
 </style>
 
-<main class="container">
-    <div>
-        <form action="/search" method="GET" class="search-bar">
-            <input class="search-input" type="text" name="q" placeholder="Поиск товаров...">
-        </form>
-    </div>
+<main class="main-wrapper">
+    <form action="/search" method="GET" class="search-bar">
+        <input class="search-input" type="text" name="q" placeholder="Поиск товаров...">
+    </form>
 
-    {% for product in ads %}
-    <div class="product-card">
-        <img src="{{ product.image_url }}" alt="{{ product.name }}">
-        <h3>{{ product.name }}</h3>
-        <p>{{ product.description[:80] }}...</p>
-        <p><strong>{{ product.price }} ₽</strong></p>
+    <div class="products-grid">
+        {% for product in ads %}
+        <div class="product-card">
+            <img src="{{ images[loop.index - 1] }}" alt="{{ product.name }}">
+            <h3>{{ product.name }}</h3>
+            <div class="product-meta">
+                Артикул: {{ product.id }} | Категория: {{ categories[loop.index - 1] }}
+            </div>
+            <p>{{ product.description[:55] }}...</p>
+            <p><strong>{{ product.price }} ₽</strong></p>
+            <a href="/ads/{{ product.id }}" class="detail-button">Подробнее</a>
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 </main>
 {% endblock %}
