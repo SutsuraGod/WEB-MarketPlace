@@ -161,6 +161,31 @@
         align-items: center;
         height: 100%;
     }
+
+    .add-review-button {
+        display: inline-block;
+        margin-bottom: 20px;
+        padding: 10px 20px;
+        background-color: #4f46e5;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        text-decoration: none;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    .add-review-button:hover {
+        background-color: #4338ca;
+        text-decoration: none;
+        color: white;
+    }
+
+    .product-price {
+        font-size: 22px;
+        color: #10b981;
+        margin-bottom: 20px;
+    }
 </style>
 
 <div class="product-container">
@@ -186,6 +211,7 @@
     </div>
 
     <div class="product-title">{{ product.title }}</div>
+    <div class="product-price">{{ product.price }} ₽</div>
     <div class="product-meta">
         Артикул: #{{ product.id }} |
         Категория: {{ category.category }} |
@@ -200,6 +226,9 @@
     </div>
 
     <div class="reviews-section">
+        <a href="/create_review" class="add-review-button">
+            <i class="bi bi-pen"></i> Добавить отзыв
+        </a>
         <h3>Отзывы:</h3>
         {% if reviews %}
         {% for review in reviews %}
