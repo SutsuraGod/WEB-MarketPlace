@@ -9,6 +9,7 @@ from data.avatars import Avatars
 from data.ads import Ads
 from data.images import Images
 from data.categories import Categories
+from data.avatars import Avatars
 from forms.login_form import LoginForm, RegisterForm
 from forms.ad_form import AdForm
 from werkzeug.utils import secure_filename
@@ -20,7 +21,8 @@ api = Api(app)
 # секретный ключ для защиты
 app.config['SECRET_KEY'] = 'webservicekey'
 # папка для загрузки фотографий
-app.config["UPLOAD_FOLDER"] = "static/img"
+app.config["IMAGE_UPLOAD_FOLDER"] = "static/img"
+app.config["AVATAR_UPLOAD_FOLDER"] = "static/avatars"
 
 # объект класса для регистрации и авторизации пользователя
 login_manager = LoginManager()
@@ -111,8 +113,10 @@ def profile_page(user_id):
         user = session.query(Users).filter(Users.id == user_id).first()
         ads = session.query(Ads).filter(Ads.user_id == user_id).all()
         image_path = session.query(Avatars.image_path).filter(Avatars.user_id == user_id).first()
+        if image_path is None:
+            image_path = (0,)
 
-    return render_template("profile.html", title="Профиль пользователя", user=user, image_path=image_path, ads=ads)
+    return render_template("profile.html", title="Профиль пользователя", user=user, image_path=image_path[0], ads=ads)
 
 
 @app.route("/create_ad", methods=["GET", "POST"])
@@ -147,7 +151,7 @@ def create_ad():
                     filename = f"{uuid.uuid4()}.{file.filename.split('.')[-1].lower()}"
                     # функция, для создания безопасного пути
                     secure_name = secure_filename(filename)
-                    filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_name)
+                    filepath = os.path.join(app.config["IMAGE_UPLOAD_FOLDER"], secure_name)
                     # сохраняем в памяти
                     img = Image.open(file)
                     # задаем размер 300x300
@@ -228,7 +232,7 @@ def edit_ad(ad_id):
                             filename = f"{uuid.uuid4()}.{file.filename.split('.')[-1].lower()}"
                             # функция, для создания безопасного пути
                             secure_name = secure_filename(filename)
-                            filepath = os.path.join(app.config["UPLOAD_FOLDER"], secure_name)
+                            filepath = os.path.join(app.config["IMAGE_UPLOAD_FOLDER"], secure_name)
                             # сохраняем в памяти
                             img = Image.open(file)
                             # задаем размер 300x300
@@ -276,6 +280,48 @@ def view_ads(ad_id):
         category = session.query(Categories).filter(Categories.id == ad.category).first()
     return render_template("product.html", title=f"{ad.title}", images=images, product=ad, seller=seller,
                            category=category)
+
+
+@app.route('/upload_avatar', methods=['POST'])
+def upload_avatar():
+    if 'file' not in request.files:
+        return 'Нет файла', 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return 'Файл не выбран', 400
+
+    # генерируем уникальное имя
+    filename = f"{uuid.uuid4()}.{file.filename.split('.')[-1].lower()}"
+    # функция, для создания безопасного пути
+    secure_name = secure_filename(filename)
+    upload_path = os.path.join(app.config['AVATAR_UPLOAD_FOLDER'], secure_name)
+
+    img = Image.open(file.stream)  # Открываем изображение сразу из потока
+
+    # изменяем размер до 256x256 пикселей
+    img = img.convert("RGB")
+    img.thumbnail((120, 120), Image.LANCZOS)
+
+    # Сохраняем уже уменьшенное изображение
+    img.save(upload_path, format='JPEG', quality=95)
+    with db_session.create_session() as session:
+        # удаляем старое фото, если оно есть
+        avatar = session.query(Avatars).filter(Avatars.user_id == current_user.id).first()
+        if avatar is not None:
+            os.remove(avatar.image_path)
+            session.delete(avatar)
+
+        # сохраняем в БД
+        avatar = Avatars(
+            user_id=current_user.id,
+            image_path=upload_path
+        )
+
+        session.add(avatar)
+        session.commit()
+
+    return redirect(f"/profile/{current_user.id}")
 
 
 if __name__ == '__main__':
