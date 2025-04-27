@@ -91,6 +91,19 @@ def register_page():
             logout_user()
 
             session.commit()
+
+            # добавление базового аватара
+            with open('static/avatars/base_avatar.png', 'rb') as f:
+                class FileObj:
+                    filename = 'base_avatar.jpg'
+                    stream = f
+
+                    def read(self, *args, **kwargs):
+                        return self.stream.read(*args, **kwargs)
+
+                file_obj = FileObj()
+                save_avatar(file_obj, user.id)
+
         # перенаправление пользователя на страницы авторизации
         return redirect("/login")
     return render_template("register.html", title="Регистрация", form=form)
@@ -290,6 +303,32 @@ def view_ads(ad_id):
                            category=category)
 
 
+def save_avatar(file, user_id):
+    filename = f"{uuid.uuid4()}.{file.filename.split('.')[-1].lower()}"
+    secure_name = secure_filename(filename)
+    upload_path = os.path.join(app.config['AVATAR_UPLOAD_FOLDER'], secure_name)
+
+    img = Image.open(file.stream)
+    img = img.convert("RGB")
+    img.thumbnail((120, 120), Image.LANCZOS)
+    img.save(upload_path, format='JPEG', quality=95)
+
+    with db_session.create_session() as session:
+        avatar = session.query(Avatars).filter(Avatars.user_id == user_id).first()
+        if avatar is not None:
+            os.remove(avatar.image_path)
+            session.delete(avatar)
+
+        avatar = Avatars(
+            user_id=user_id,
+            image_path=upload_path
+        )
+
+        session.add(avatar)
+        session.commit()
+    return upload_path
+
+
 @app.route('/upload_avatar', methods=['POST'])
 def upload_avatar():
     if 'file' not in request.files:
@@ -299,35 +338,7 @@ def upload_avatar():
     if file.filename == '':
         return 'Файл не выбран', 400
 
-    # генерируем уникальное имя
-    filename = f"{uuid.uuid4()}.{file.filename.split('.')[-1].lower()}"
-    # функция, для создания безопасного пути
-    secure_name = secure_filename(filename)
-    upload_path = os.path.join(app.config['AVATAR_UPLOAD_FOLDER'], secure_name)
-
-    img = Image.open(file.stream)  # Открываем изображение сразу из потока
-
-    # изменяем размер до 256x256 пикселей
-    img = img.convert("RGB")
-    img.thumbnail((120, 120), Image.LANCZOS)
-
-    # Сохраняем уже уменьшенное изображение
-    img.save(upload_path, format='JPEG', quality=95)
-    with db_session.create_session() as session:
-        # удаляем старое фото, если оно есть
-        avatar = session.query(Avatars).filter(Avatars.user_id == current_user.id).first()
-        if avatar is not None:
-            os.remove(avatar.image_path)
-            session.delete(avatar)
-
-        # сохраняем в БД
-        avatar = Avatars(
-            user_id=current_user.id,
-            image_path=upload_path
-        )
-
-        session.add(avatar)
-        session.commit()
+    save_avatar(file, current_user.id)
 
     return redirect(f"/profile/{current_user.id}")
 
