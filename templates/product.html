@@ -226,9 +226,11 @@
     </div>
 
     <div class="reviews-section">
-        <a href="/create_review" class="add-review-button">
-            <i class="bi bi-pen"></i> Добавить отзыв
-        </a>
+        {% if current_user.is_authenticated and not user_has_reviewed and current_user.id != seller.id %}
+            <a href="/create_review/{{ product.id }}" class="add-review-button">
+                <i class="bi bi-pen"></i> Добавить отзыв
+            </a>
+        {% endif %}
         <h3>Отзывы:</h3>
         {% if reviews %}
         {% for review in reviews %}
