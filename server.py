@@ -302,6 +302,7 @@ def delete_ad(ad_id):
 
 @app.route("/ads/<int:ad_id>", methods=["GET"])
 def view_ads(ad_id):
+    '''Обработчик подробного показа объявления'''
     with db_session.create_session() as session:
         # находим нужную информацию об объявлении в БД
         ad = session.query(Ads).filter(Ads.id == ad_id).first()
@@ -326,6 +327,7 @@ def view_ads(ad_id):
 
 
 def save_avatar(file, user_id):
+    '''Функция для сохранения аватарки'''
     # генерируем имя
     filename = f"{uuid.uuid4()}.{file.filename.split('.')[-1].lower()}"
     # безопасно сохраняем имя
@@ -360,6 +362,7 @@ def save_avatar(file, user_id):
 @app.route('/upload_avatar', methods=['POST'])
 @login_required
 def upload_avatar():
+    '''Обработчик сохранения аватарки'''
     if 'file' not in request.files:
         return 'Нет файла', 400
 
@@ -375,6 +378,7 @@ def upload_avatar():
 @app.route("/create_review/<int:ad_id>", methods=["GET", "POST"])
 @login_required
 def create_review(ad_id):
+    '''Обработчик создания отзыва'''
     form = ReviewForm()
 
     if form.validate_on_submit():
@@ -397,7 +401,35 @@ def create_review(ad_id):
             session.commit()
             return redirect(f"/ads/{ad_id}")
 
-    return render_template("create_review.html", title="Создание объявления", form=form)
+    return render_template("create_review.html", title="Создание отзыва", form=form)
+
+
+@app.route("/edit_review/<int:review_id>", methods=["GET", "POST"])
+@login_required
+def edit_review(review_id):
+    form = ReviewForm()
+
+    if request.method == "GET":
+        with db_session.create_session() as session:
+            review = session.query(Reviews).filter(Reviews.id == review_id).first()
+
+            if review is None:
+                abort(404)
+
+            form.comment.data = review.comment
+            form.rating.data = int(review.rating)
+
+    if form.validate_on_submit():
+        with db_session.create_session() as session:
+            review = session.query(Reviews).filter(Reviews.id == review_id).first()
+            if review:
+                review.comment = form.comment.data
+                review.rating = form.rating.data
+                session.add(review)
+                session.commit()
+            return redirect(f"/ads/{review.ad_id}")
+
+    return render_template("create_review.html", title="Изменение отзыва", form=form)
 
 
 if __name__ == '__main__':

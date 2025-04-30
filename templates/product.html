@@ -242,6 +242,13 @@
                 {% for _ in range(5 - review.rating)%}☆{% endfor %}
             </div>
             <div class="review-text">{{ review.comment }}</div>
+            <div></div>
+            {% if current_user.id == review.user_id %}
+                <div>
+                    <a href="/edit_review/{{ review.id }}" class="btn btn-warning">Изменить</a>
+                    <a href="/delete_review/{{ review.id }}" class="btn btn-danger">Удалить</a>
+                </div>
+            {% endif %}
         </div>
         {% endfor %}
         {% else %}
