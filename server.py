@@ -78,8 +78,26 @@ def user_loader(user_id):
 @app.route('/')
 def main_page():
     '''Обработчик главной страницы'''
+    ads, images, categories = get_ads()
+
+    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories)
+
+
+@app.route('/search')
+def search():
+    query = request.args.get('q', '').lower()
+    ads, images, categories = get_ads(query)
+    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories)
+
+
+def get_ads(query=None):
     with db_session.create_session() as session:
-        ads = session.query(Ads).all()
+        if query is not None:
+            ads = session.query(Ads).filter((Ads.title.ilike(f"%{query}%")) | (Ads.title.ilike(f"%{query.capitalize()}"))).all()
+            print(f"Поисковый запрос: {query}")
+            print([ad.title for ad in ads])
+        else:
+            ads = session.query(Ads).all()
         images = []
         categories = []
         for ad in ads:
@@ -87,8 +105,7 @@ def main_page():
             images.append(image.image_path)
             category = session.query(Categories).filter(ad.category == Categories.id).first()
             categories.append(category.category)
-
-    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories)
+        return ads, images, categories
 
 
 @app.route("/register", methods=['GET', 'POST'])
