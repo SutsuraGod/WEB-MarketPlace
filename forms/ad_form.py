@@ -24,7 +24,7 @@ class AdForm(FlaskForm):
         file_required_if_not_existing,
         FileAllowed(['jpg', 'jpeg', 'png'], "Только изображения!")
     ])
-    submit = SubmitField("Создать объявление")
+    submit = SubmitField("Отправить")
 
     def __init__(self, *args, **kwargs):
         super(AdForm, self).__init__(*args, **kwargs)

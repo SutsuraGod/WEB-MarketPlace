@@ -22,7 +22,7 @@ class Users(SqlAlchemyBase, UserMixin, SerializerMixin):
 
     def __repr__(self):
         '''Изменение формата вывода пользователя в консоль'''
-        return f"<User> {self.id} {self.username}"
+        return f"{self.username}"
 
     def set_password(self, password):
         '''Хеширование и сохранение пароля'''

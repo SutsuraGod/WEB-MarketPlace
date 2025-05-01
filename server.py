@@ -1,17 +1,19 @@
 import os
 import uuid
+from sqlalchemy.orm import joinedload
 from flask import Flask, render_template, redirect, abort, request, make_response, jsonify
 from flask_login import LoginManager, login_user, login_required, current_user, logout_user
 from flask_restful import Api
 from data import db_session
 from data.users import Users
-from data.avatars import Avatars
 from data.ads import Ads
 from data.images import Images
 from data.categories import Categories
 from data.avatars import Avatars
+from data.reviews import Reviews
 from forms.login_form import LoginForm, RegisterForm
 from forms.ad_form import AdForm
+from forms.review_form import ReviewForm
 from werkzeug.utils import secure_filename
 from PIL import Image
 
@@ -275,18 +277,24 @@ def edit_ad(ad_id):
 @app.route("/delete_ad/<int:ad_id>", methods=["GET", "POST"])
 @login_required
 def delete_ad(ad_id):
+    '''Обработчик удаления объявления'''
     with db_session.create_session() as session:
         ad = session.query(Ads).filter(Ads.id == ad_id).first()
         images = session.query(Images).filter(Images.ad_id == ad_id).all()
 
+        # выкидываем ошибку 404, если не нашли объявления
         if not ad:
             abort(404)
         else:
+            # удаляем фотографии из памяти сервера
             for image in images:
                 if os.path.exists(image.image_path):
                     os.remove(image.image_path)
+            # удаляем фото и объявление из БД
             session.query(Images).filter(Images.ad_id == ad_id).delete()
             session.delete(ad)
+
+            # сохраняем результат
             session.commit()
 
     return redirect(f"/profile/{current_user.id}")
@@ -294,31 +302,55 @@ def delete_ad(ad_id):
 
 @app.route("/ads/<int:ad_id>", methods=["GET"])
 def view_ads(ad_id):
+    '''Обработчик подробного показа объявления'''
     with db_session.create_session() as session:
+        # находим нужную информацию об объявлении в БД
         ad = session.query(Ads).filter(Ads.id == ad_id).first()
         images = session.query(Images).filter(Images.ad_id == ad_id).all()
         seller = session.query(Users).filter(Users.id == ad.user_id).first()
         category = session.query(Categories).filter(Categories.id == ad.category).first()
+        reviews = session.query(Reviews) \
+            .options(joinedload(Reviews.author)) \
+            .filter(Reviews.ad_id == ad.id) \
+            .all()
+
+        average = round(sum([review.rating for review in reviews]) / len(reviews))
+
+        user_has_reviewed = False
+        if current_user.is_authenticated:
+            user_has_reviewed = session.query(Reviews).filter(
+                Reviews.ad_id == ad_id,
+                Reviews.user_id == current_user.id
+            ).first() is not None
+
+    # возвращаем шаблон
     return render_template("product.html", title=f"{ad.title}", images=images, product=ad, seller=seller,
-                           category=category)
+                           category=category, reviews=reviews, user_has_reviewed=user_has_reviewed, average=average)
 
 
 def save_avatar(file, user_id):
+    '''Функция для сохранения аватарки'''
+    # генерируем имя
     filename = f"{uuid.uuid4()}.{file.filename.split('.')[-1].lower()}"
+    # безопасно сохраняем имя
     secure_name = secure_filename(filename)
+    # переходим в папку
     upload_path = os.path.join(app.config['AVATAR_UPLOAD_FOLDER'], secure_name)
 
+    # изменяем размер до 120х120 и сохраняем в /static/avatars/
     img = Image.open(file.stream)
     img = img.convert("RGB")
     img.thumbnail((120, 120), Image.LANCZOS)
     img.save(upload_path, format='JPEG', quality=95)
 
     with db_session.create_session() as session:
+        # удаляем старую аватарку, если она была
         avatar = session.query(Avatars).filter(Avatars.user_id == user_id).first()
+
         if avatar is not None:
             os.remove(avatar.image_path)
             session.delete(avatar)
-
+        # сохраняем в БД
         avatar = Avatars(
             user_id=user_id,
             image_path=upload_path
@@ -330,17 +362,92 @@ def save_avatar(file, user_id):
 
 
 @app.route('/upload_avatar', methods=['POST'])
+@login_required
 def upload_avatar():
+    '''Обработчик сохранения аватарки'''
     if 'file' not in request.files:
         return 'Нет файла', 400
 
     file = request.files['file']
     if file.filename == '':
         return 'Файл не выбран', 400
-
+    # сохраняем новый аватар
     save_avatar(file, current_user.id)
 
     return redirect(f"/profile/{current_user.id}")
+
+
+@app.route("/create_review/<int:ad_id>", methods=["GET", "POST"])
+@login_required
+def create_review(ad_id):
+    '''Обработчик создания отзыва'''
+    form = ReviewForm()
+
+    if form.validate_on_submit():
+        comment = form.comment.data
+        rating = form.rating.data
+        with db_session.create_session() as session:
+            last_review = session.query(Reviews).filter(Reviews.ad_id == ad_id,
+                                                        Reviews.user_id == current_user.id).first()
+
+            if last_review is not None:
+                return render_template("create_review.html", title="Создание объявления", form=form,
+                                       message="Вы уже оставляли отзыв на этот товар")
+            review = Reviews(
+                user_id=current_user.id,
+                ad_id=ad_id,
+                rating=rating,
+                comment=comment
+            )
+            session.add(review)
+            session.commit()
+            return redirect(f"/ads/{ad_id}")
+
+    return render_template("create_review.html", title="Создание отзыва", form=form)
+
+
+@app.route("/edit_review/<int:review_id>", methods=["GET", "POST"])
+@login_required
+def edit_review(review_id):
+    form = ReviewForm()
+
+    if request.method == "GET":
+        with db_session.create_session() as session:
+            review = session.query(Reviews).filter(Reviews.id == review_id).first()
+
+            if review is None:
+                abort(404)
+
+            form.comment.data = review.comment
+            form.rating.data = int(review.rating)
+
+    if form.validate_on_submit():
+        with db_session.create_session() as session:
+            review = session.query(Reviews).filter(Reviews.id == review_id).first()
+            if review:
+                review.comment = form.comment.data
+                review.rating = form.rating.data
+                session.add(review)
+                session.commit()
+            return redirect(f"/ads/{review.ad_id}")
+
+    return render_template("create_review.html", title="Изменение отзыва", form=form)
+
+
+@app.route("/delete_review/<int:review_id>", methods=["GET", "POST"])
+def delete_review(review_id):
+    '''Обработчик удаления объявления'''
+    with db_session.create_session() as session:
+        review = session.query(Reviews).filter(Reviews.id == review_id).first()
+
+        if review is None:
+            abort(404)
+        else:
+            ad_id = review.ad_id
+            session.delete(review)
+            session.commit()
+
+        return redirect(f"/ads/{ad_id}")
 
 
 if __name__ == '__main__':

@@ -120,7 +120,7 @@
         {% for product in ads %}
         <div class="product-card">
             <img src="/{{ images[loop.index - 1] }}" alt="{{ product.name }}">
-            <h3>{{ product.name }}</h3>
+            <h3>{{ product.title }}</h3>
             <div class="product-meta">
                 Артикул: {{ product.id }} | Категория: {{ categories[loop.index - 1] }}
             </div>

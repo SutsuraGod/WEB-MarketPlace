@@ -225,10 +225,18 @@
         Email: {{ seller.email }}
     </div>
 
+    <div class="review-rating">
+        Средняя оценка:
+        {% for _ in range(average) %}★{% endfor %}
+        {% for _ in range(5 - average)%}☆{% endfor %}
+    </div>
+
     <div class="reviews-section">
-        <a href="/create_review" class="add-review-button">
-            <i class="bi bi-pen"></i> Добавить отзыв
-        </a>
+        {% if current_user.is_authenticated and not user_has_reviewed and current_user.id != seller.id %}
+            <a href="/create_review/{{ product.id }}" class="add-review-button">
+                <i class="bi bi-pen"></i> Добавить отзыв
+            </a>
+        {% endif %}
         <h3>Отзывы:</h3>
         {% if reviews %}
         {% for review in reviews %}
@@ -240,6 +248,13 @@
                 {% for _ in range(5 - review.rating)%}☆{% endfor %}
             </div>
             <div class="review-text">{{ review.comment }}</div>
+            <div></div>
+            {% if current_user.id == review.user_id %}
+                <div>
+                    <a href="/edit_review/{{ review.id }}" class="btn btn-warning">Изменить</a>
+                    <a href="/delete_review/{{ review.id }}" class="btn btn-danger">Удалить</a>
+                </div>
+            {% endif %}
         </div>
         {% endfor %}
         {% else %}
