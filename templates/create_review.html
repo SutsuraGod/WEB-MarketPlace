@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .star-rating {
+        direction: rtl;
+        font-size: 2rem;
+        unicode-bidi: bidi-override;
+        display: inline-flex;
+    }
+
+    .star-rating input {
+        display: none;
+    }
+
+    .star-rating label {
+        color: #ccc;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .star-rating label:hover,
+    .star-rating label:hover ~ label,
+    .star-rating input:checked ~ label {
+        color: gold;
+    }
+</style>
+
+<h2>Оцените товар:</h2>
+
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.comment.label }}<br>
+        {{ form.comment(class="form-control") }}
+        {% for error in form.comment.errors %}
+            <p class="alert alert-danger" role="alert">
+                {{ error }}
+            </p>
+        {% endfor %}
+    </p>
+    <div class="star-rating">
+        {% for value, label in form.rating.choices %}
+            <input type="radio" id="star{{ value }}" name="{{ form.rating.name }}" value="{{ value }}">
+            <label for="star{{ value }}">★</label>
+        {% endfor %}
+    </div>
+    <br><br>
+    <p>{{ form.submit(type="submit", class="btn btn-primary") }}</p>
+    {{ message }}
+</form>
+{% endblock %}
