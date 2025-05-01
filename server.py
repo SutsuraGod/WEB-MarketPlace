@@ -314,6 +314,8 @@ def view_ads(ad_id):
             .filter(Reviews.ad_id == ad.id) \
             .all()
 
+        average = round(sum([review.rating for review in reviews]) / len(reviews))
+
         user_has_reviewed = False
         if current_user.is_authenticated:
             user_has_reviewed = session.query(Reviews).filter(
@@ -323,7 +325,7 @@ def view_ads(ad_id):
 
     # возвращаем шаблон
     return render_template("product.html", title=f"{ad.title}", images=images, product=ad, seller=seller,
-                           category=category, reviews=reviews, user_has_reviewed=user_has_reviewed)
+                           category=category, reviews=reviews, user_has_reviewed=user_has_reviewed, average=average)
 
 
 def save_avatar(file, user_id):
@@ -430,6 +432,22 @@ def edit_review(review_id):
             return redirect(f"/ads/{review.ad_id}")
 
     return render_template("create_review.html", title="Изменение отзыва", form=form)
+
+
+@app.route("/delete_review/<int:review_id>", methods=["GET", "POST"])
+def delete_review(review_id):
+    '''Обработчик удаления объявления'''
+    with db_session.create_session() as session:
+        review = session.query(Reviews).filter(Reviews.id == review_id).first()
+
+        if review is None:
+            abort(404)
+        else:
+            ad_id = review.ad_id
+            session.delete(review)
+            session.commit()
+
+        return redirect(f"/ads/{ad_id}")
 
 
 if __name__ == '__main__':

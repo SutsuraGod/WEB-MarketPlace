@@ -225,6 +225,12 @@
         Email: {{ seller.email }}
     </div>
 
+    <div class="review-rating">
+        Средняя оценка:
+        {% for _ in range(average) %}★{% endfor %}
+        {% for _ in range(5 - average)%}☆{% endfor %}
+    </div>
+
     <div class="reviews-section">
         {% if current_user.is_authenticated and not user_has_reviewed and current_user.id != seller.id %}
             <a href="/create_review/{{ product.id }}" class="add-review-button">
