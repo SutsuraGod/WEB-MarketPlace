@@ -32,10 +32,32 @@ login_manager.init_app(app)
 
 
 def main():
-    # создание библиотеки
+    # создание БД
     db_session.global_init("db/marketplace.db")
+    # заполнение таблицы с категориями
+    populate_db()
     # запуск приложения
     app.run(debug=True)
+
+
+def populate_db():
+    session = db_session.create_session()
+
+    # Проверка, чтобы избежать повторного заполнения
+    if session.query(Categories).first():
+        print("База данных уже заполнена")
+        return
+
+    # Добавление данных
+    obj1 = Categories(category="Транспорт")
+    obj2 = Categories(category="Недвижимость")
+    obj3 = Categories(category="Запчасти и аксессуары")
+    obj4 = Categories(category="Личные вещи")
+    obj5 = Categories(category="Электроника")
+    obj6 = Categories(category="Животные")
+
+    session.add_all([obj1, obj2, obj3, obj4, obj5, obj6])
+    session.commit()
 
 
 @app.route("/logout")
@@ -314,7 +336,10 @@ def view_ads(ad_id):
             .filter(Reviews.ad_id == ad.id) \
             .all()
 
-        average = round(sum([review.rating for review in reviews]) / len(reviews))
+        if reviews:
+            average = round(sum([review.rating for review in reviews]) / len(reviews))
+        else:
+            average = 0
 
         user_has_reviewed = False
         if current_user.is_authenticated:
