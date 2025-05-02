@@ -2,6 +2,25 @@
 
 {% block content %}
 <style>
+    .form-card {
+        max-width: 600px;
+        margin: 40px auto;
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 6px;
+        display: block;
+    }
+
     .star-rating {
         direction: rtl;
         font-size: 2rem;
@@ -26,27 +45,36 @@
     }
 </style>
 
-<h2>Оцените товар:</h2>
+<div class="form-card">
+    <h2 class="mb-4">Оцените товар</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
 
-<form method="POST">
-    {{ form.hidden_tag() }}
-    <p>
-        {{ form.comment.label }}<br>
-        {{ form.comment(class="form-control") }}
-        {% for error in form.comment.errors %}
-            <p class="alert alert-danger" role="alert">
-                {{ error }}
-            </p>
-        {% endfor %}
-    </p>
-    <div class="star-rating">
-        {% for value, label in form.rating.choices %}
-            <input type="radio" id="star{{ value }}" name="{{ form.rating.name }}" value="{{ value }}">
-            <label for="star{{ value }}">★</label>
-        {% endfor %}
-    </div>
-    <br><br>
-    <p>{{ form.submit(type="submit", class="btn btn-primary") }}</p>
-    {{ message }}
-</form>
+        <div class="form-group">
+            <label class="form-label">{{ form.comment.label }}</label>
+            {{ form.comment(class="form-control") }}
+            {% for error in form.comment.errors %}
+                <div class="alert alert-danger mt-2">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Ваша оценка:</label>
+            <div class="star-rating">
+                {% for value, label in form.rating.choices %}
+                    <input type="radio" id="star{{ value }}" name="{{ form.rating.name }}" value="{{ value }}">
+                    <label for="star{{ value }}">★</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group text-center mt-4">
+            <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-send ms-2"></i> Отправить
+            </button>
+        </div>
+
+        <div class="text-center mt-3">{{ message }}</div>
+    </form>
+</div>
 {% endblock %}
