@@ -22,7 +22,7 @@ class AdForm(FlaskForm):
     city = StringField("Город", validators=[DataRequired()])
     images = MultipleFileField("Загрузите до 5 фотографий", render_kw={'multiple': True}, validators=[
         file_required_if_not_existing,
-        FileAllowed(['jpg', 'jpeg', 'png'], "Только изображения!")
+        FileAllowed(['jpg'], "Только изображения!")
     ])
     submit = SubmitField("Отправить")
 

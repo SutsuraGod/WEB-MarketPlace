@@ -78,22 +78,31 @@ def user_loader(user_id):
 @app.route('/')
 def main_page():
     '''Обработчик главной страницы'''
-    ads, images, categories = get_ads()
+    ads, images, categories, all_categories = get_ads()
 
-    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories)
+    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories,
+                           all_categories=all_categories)
 
 
 @app.route('/search')
 def search():
-    query = request.args.get('q', '').lower()
-    ads, images, categories = get_ads(query)
-    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories)
+    query = request.args.get('q', '').lower().strip()
+    selected_category = request.args.get('category', '')
+    ads, images, categories, all_categories = get_ads(query, selected_category)
+    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories,
+                           all_categories=all_categories, selected_category=selected_category)
 
 
-def get_ads(query=None):
+def get_ads(query=None, selected_category=None):
     with db_session.create_session() as session:
         if query is not None:
-            ads = session.query(Ads).filter((Ads.title.ilike(f"%{query}%")) | (Ads.title.ilike(f"%{query.capitalize()}"))).all()
+            ads = session.query(Ads).filter(
+                (Ads.title.ilike(f"%{query}%")) | (Ads.title.ilike(f"%{query.capitalize()}")))
+            print(selected_category)
+            if selected_category:
+                category = session.query(Categories).filter(Categories.category == selected_category).first()
+                print(category.category, selected_category)
+                ads = ads.filter(Ads.category == category.id)
             print(f"Поисковый запрос: {query}")
             print([ad.title for ad in ads])
         else:
@@ -105,7 +114,9 @@ def get_ads(query=None):
             images.append(image.image_path)
             category = session.query(Categories).filter(ad.category == Categories.id).first()
             categories.append(category.category)
-        return ads, images, categories
+
+        all_categories = session.query(Categories.category).all()
+        return ads, images, categories, all_categories
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -461,7 +472,7 @@ def edit_review(review_id):
                 abort(404)
 
             form.comment.data = review.comment
-            form.rating.data = int(review.rating)
+            form.rating.data = str(review.rating)
 
     if form.validate_on_submit():
         with db_session.create_session() as session:

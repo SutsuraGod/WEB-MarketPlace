@@ -95,7 +95,7 @@
             {% for image in images_paths %}
                 <div class="mb-1">{{ image.original_image_path }}</div>
             {% endfor %}
-            {{ form.images(class="form-control") }}
+            {{ form.images(class="form-control", type="file", accept=".jpg") }}
             {% for error in form.images.errors %}
             <div class="alert alert-danger" role="alert">{{ error }}</div>
             {% endfor %}
