@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
+    }
+
+    .profile-container {
+        max-width: 600px;
+        margin: 40px auto 20px;
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .profile-photo {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #4f46e5;
+        margin-bottom: 20px;
+    }
+
+    .profile-name {
+        font-size: 26px;
+        font-weight: bold;
+        color: #111827;
+    }
+
+    .profile-email, .profile-created {
+        font-size: 16px;
+        color: #6b7280;
+        margin-top: 10px;
+    }
+
+    .ads-text {
+        text-align: center;
+        margin-top: 40px;
+        color: #1f2937;
+    }
+
+    .ads-item {
+        max-width: 700px;
+        margin: 20px auto;
+        background: white;
+        border-radius: 10px;
+        padding: 20px 25px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        border-left: 5px solid #6366f1;
+    }
+
+    .ads-item h2 {
+        font-size: 20px;
+        color: #111827;
+        margin-bottom: 10px;
+    }
+
+    .ads-item div {
+        margin-bottom: 8px;
+        color: #374151;
+    }
+
+    .ads-item a.btn {
+        display: inline-block;
+        margin-right: 10px;
+        padding: 6px 14px;
+        font-size: 14px;
+        border-radius: 6px;
+        text-decoration: none;
+        color: white;
+    }
+
+    .btn-warning {
+        background-color: #f59e0b;
+    }
+
+    .btn-danger {
+        background-color: #ef4444;
+    }
+
+    .btn-warning:hover {
+        background-color: #d97706;
+    }
+
+    .btn-danger:hover {
+        background-color: #dc2626;
+    }
+</style>
+
+<div class="profile-container">
+    <img src="/{{ image_path }}" alt="Фото пользователя" class="profile-photo"/>
+    {% if current_user.id == user.id %}
+        <div class="text-center">
+            <p id="upload-text" class="text-primary text-decoration-underline" style="cursor: pointer;">
+                Сменить аватар
+            </p>
+            <input type="file" id="file-input" accept=".jpg, .jpeg, .png" class="form-control" style="display: none;">
+        </div>
+
+        <script>
+            const uploadText = document.getElementById('upload-text');
+            const fileInput = document.getElementById('file-input');
+
+            uploadText.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', () => {
+                const file = fileInput.files[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/upload_avatar', {
+                    method: 'POST',
+                    body: formData,
+                })
+                    .then(response => response.text())
+                    .then(data => console.log('Ответ сервера:', data))
+                    .catch(error => console.error('Ошибка при загрузке:', error));
+            });
+        </script>
+    {% endif %}
+
+    <div class="profile-name">{{ user.username }}</div>
+    <div class="profile-email">Почта: {{ user.email }}</div>
+    <div class="profile-created">Дата регистрации: {{ user.created_at.strftime('%d.%m.%Y') if user else "Нет даты" }}
+    </div>
+    {% if current_user.id == user.id %}
+    <div class="profile-exit"><a href="/logout" class="btn btn-danger">Выйти</a></div>
+    {% endif %}
+</div>
+
+<h2 class="ads-text">Ваши объявления:</h2>
+{% for item in ads %}
+<div class="ads-item">
+    <h2><a href="/ads/{{ item.id }}" class="plain-link">{{ item.title }}</a></h2>
+    <div>{{ item.description[:80] }}</div>
+    <div>Дата публикации — {{ item.modified_at.strftime('%d.%m.%Y, %H:%M') }}</div>
+    {% if current_user.id == user.id %}
+    <div>
+        <a href="/edit_ad/{{ item.id }}" class="btn btn-warning">Изменить</a>
+        <a href="/delete_ad/{{ item.id }}" class="btn btn-danger">Удалить</a>
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+{% endblock %}
