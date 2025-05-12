@@ -331,6 +331,7 @@ def delete_ad(ad_id):
     with db_session.create_session() as session:
         ad = session.query(Ads).filter(Ads.id == ad_id).first()
         images = session.query(Images).filter(Images.ad_id == ad_id).all()
+        reviews = session.query(Reviews).filter(Reviews.ad_id == ad_id).all()
 
         # выкидываем ошибку 404, если не нашли объявления
         if not ad:
@@ -340,7 +341,9 @@ def delete_ad(ad_id):
             for image in images:
                 if os.path.exists(image.image_path):
                     os.remove(image.image_path)
-            # удаляем фото и объявление из БД
+            # удаляем фото, отзывы и объявление из БД
+            if reviews:
+                session.query(Reviews).filter(Reviews.ad_id == ad_id).delete()
             session.query(Images).filter(Images.ad_id == ad_id).delete()
             session.delete(ad)
 
