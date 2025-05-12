@@ -78,22 +78,31 @@ def user_loader(user_id):
 @app.route('/')
 def main_page():
     '''Обработчик главной страницы'''
-    ads, images, categories = get_ads()
+    ads, images, categories, all_categories = get_ads()
 
-    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories)
+    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories,
+                           all_categories=all_categories)
 
 
 @app.route('/search')
 def search():
-    query = request.args.get('q', '').lower()
-    ads, images, categories = get_ads(query)
-    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories)
+    query = request.args.get('q', '').lower().strip()
+    selected_category = request.args.get('category', '')
+    ads, images, categories, all_categories = get_ads(query, selected_category)
+    return render_template("main_page.html", title="Маркетплейс", ads=ads, images=images, categories=categories,
+                           all_categories=all_categories, selected_category=selected_category)
 
 
-def get_ads(query=None):
+def get_ads(query=None, selected_category=None):
     with db_session.create_session() as session:
         if query is not None:
-            ads = session.query(Ads).filter((Ads.title.ilike(f"%{query}%")) | (Ads.title.ilike(f"%{query.capitalize()}"))).all()
+            ads = session.query(Ads).filter(
+                (Ads.title.ilike(f"%{query}%")) | (Ads.title.ilike(f"%{query.capitalize()}")))
+            print(selected_category)
+            if selected_category:
+                category = session.query(Categories).filter(Categories.category == selected_category).first()
+                print(category.category, selected_category)
+                ads = ads.filter(Ads.category == category.id)
             print(f"Поисковый запрос: {query}")
             print([ad.title for ad in ads])
         else:
@@ -105,7 +114,9 @@ def get_ads(query=None):
             images.append(image.image_path)
             category = session.query(Categories).filter(ad.category == Categories.id).first()
             categories.append(category.category)
-        return ads, images, categories
+
+        all_categories = session.query(Categories.category).all()
+        return ads, images, categories, all_categories
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -320,6 +331,7 @@ def delete_ad(ad_id):
     with db_session.create_session() as session:
         ad = session.query(Ads).filter(Ads.id == ad_id).first()
         images = session.query(Images).filter(Images.ad_id == ad_id).all()
+        reviews = session.query(Reviews).filter(Reviews.ad_id == ad_id).all()
 
         # выкидываем ошибку 404, если не нашли объявления
         if not ad:
@@ -329,7 +341,9 @@ def delete_ad(ad_id):
             for image in images:
                 if os.path.exists(image.image_path):
                     os.remove(image.image_path)
-            # удаляем фото и объявление из БД
+            # удаляем фото, отзывы и объявление из БД
+            if reviews:
+                session.query(Reviews).filter(Reviews.ad_id == ad_id).delete()
             session.query(Images).filter(Images.ad_id == ad_id).delete()
             session.delete(ad)
 
@@ -461,7 +475,7 @@ def edit_review(review_id):
                 abort(404)
 
             form.comment.data = review.comment
-            form.rating.data = int(review.rating)
+            form.rating.data = str(review.rating)
 
     if form.validate_on_submit():
         with db_session.create_session() as session:
@@ -491,6 +505,325 @@ def delete_review(review_id):
 
         return redirect(f"/ads/{ad_id}")
 
+from flask_restful import Resource, reqparse
+from werkzeug.datastructures import FileStorage
+
+# Add these imports at the top of your file
+from flask import send_from_directory
+import json
+
+# Add these resources to your API
+api = Api(app)
+
+# Common parsers
+ad_parser = reqparse.RequestParser()
+ad_parser.add_argument('title', required=True)
+ad_parser.add_argument('description', required=True)
+ad_parser.add_argument('price', type=float, required=True)
+ad_parser.add_argument('category', type=int, required=True)
+ad_parser.add_argument('city', required=True)
+
+review_parser = reqparse.RequestParser()
+review_parser.add_argument('rating', type=int, required=True)
+review_parser.add_argument('comment', required=True)
+
+user_parser = reqparse.RequestParser()
+user_parser.add_argument('username', required=True)
+user_parser.add_argument('email', required=True)
+user_parser.add_argument('password', required=True)
+
+image_upload_parser = reqparse.RequestParser()
+image_upload_parser.add_argument('image', type=FileStorage, location='files', required=True)
+
+# Helper functions
+def ad_to_dict(ad):
+    return {
+        'id': ad.id,
+        'title': ad.title,
+        'description': ad.description,
+        'price': float(ad.price),
+        'category': ad.category,
+        'city': ad.city,
+        'user_id': ad.user_id,
+        'created_date': ad.created_date.isoformat() if ad.created_date else None
+    }
+
+def review_to_dict(review):
+    return {
+        'id': review.id,
+        'user_id': review.user_id,
+        'ad_id': review.ad_id,
+        'rating': review.rating,
+        'comment': review.comment,
+        'created_date': review.created_date.isoformat() if review.created_date else None
+    }
+
+def user_to_dict(user):
+    return {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'created_date': user.created_date.isoformat() if user.created_date else None
+    }
+
+# API Resources
+class AdsResource(Resource):
+    def get(self, ad_id):
+        with db_session.create_session() as session:
+            ad = session.query(Ads).filter(Ads.id == ad_id).first()
+            if not ad:
+                return {'message': 'Ad not found'}, 404
+            
+            images = session.query(Images).filter(Images.ad_id == ad_id).all()
+            category = session.query(Categories).filter(Categories.id == ad.category).first()
+            
+            result = ad_to_dict(ad)
+            result['images'] = [img.image_path for img in images]
+            result['category_name'] = category.category if category else None
+            return result
+
+    @login_required
+    def put(self, ad_id):
+        args = ad_parser.parse_args()
+        with db_session.create_session() as session:
+            ad = session.query(Ads).filter(Ads.id == ad_id).first()
+            if not ad:
+                return {'message': 'Ad not found'}, 404
+            
+            if ad.user_id != current_user.id:
+                return {'message': 'Permission denied'}, 403
+            
+            ad.title = args['title']
+            ad.description = args['description']
+            ad.price = args['price']
+            ad.category = args['category']
+            ad.city = args['city']
+            
+            session.commit()
+            return ad_to_dict(ad)
+
+    @login_required
+    def delete(self, ad_id):
+        with db_session.create_session() as session:
+            ad = session.query(Ads).filter(Ads.id == ad_id).first()
+            if not ad:
+                return {'message': 'Ad not found'}, 404
+            
+            if ad.user_id != current_user.id:
+                return {'message': 'Permission denied'}, 403
+            
+            images = session.query(Images).filter(Images.ad_id == ad_id).all()
+            reviews = session.query(Reviews).filter(Reviews.ad_id == ad_id).all()
+            
+            for image in images:
+                if os.path.exists(image.image_path):
+                    os.remove(image.image_path)
+            
+            if reviews:
+                session.query(Reviews).filter(Reviews.ad_id == ad_id).delete()
+            
+            session.query(Images).filter(Images.ad_id == ad_id).delete()
+            session.delete(ad)
+            session.commit()
+            
+            return {'message': 'Ad deleted'}
+
+class AdsListResource(Resource):
+    def get(self):
+        query = request.args.get('q', '').strip()
+        category_id = request.args.get('category_id', type=int)
+        
+        with db_session.create_session() as session:
+            ads_query = session.query(Ads)
+            
+            if query:
+                ads_query = ads_query.filter(Ads.title.ilike(f"%{query}%"))
+            
+            if category_id:
+                ads_query = ads_query.filter(Ads.category == category_id)
+            
+            ads = ads_query.all()
+            
+            result = []
+            for ad in ads:
+                images = session.query(Images).filter(Images.ad_id == ad.id).all()
+                category = session.query(Categories).filter(Categories.id == ad.category).first()
+                
+                ad_dict = ad_to_dict(ad)
+                ad_dict['images'] = [img.image_path for img in images]
+                ad_dict['category_name'] = category.category if category else None
+                result.append(ad_dict)
+            
+            return result
+
+    @login_required
+    def post(self):
+        args = ad_parser.parse_args()
+        with db_session.create_session() as session:
+            ad = Ads(
+                user_id=current_user.id,
+                title=args['title'],
+                description=args['description'],
+                price=args['price'],
+                category=args['category'],
+                city=args['city']
+            )
+            
+            session.add(ad)
+            session.commit()
+            
+            return ad_to_dict(ad), 201
+
+class AdImagesResource(Resource):
+    @login_required
+    def post(self, ad_id):
+        args = image_upload_parser.parse_args()
+        image_file = args['image']
+        
+        with db_session.create_session() as session:
+            ad = session.query(Ads).filter(Ads.id == ad_id).first()
+            if not ad:
+                return {'message': 'Ad not found'}, 404
+            
+            if ad.user_id != current_user.id:
+                return {'message': 'Permission denied'}, 403
+            
+            # Generate unique filename
+            filename = f"{uuid.uuid4()}.{image_file.filename.split('.')[-1].lower()}"
+            secure_name = secure_filename(filename)
+            filepath = os.path.join(app.config["IMAGE_UPLOAD_FOLDER"], secure_name)
+            
+            # Process and save image
+            img = Image.open(image_file.stream)
+            img.resize((300, 300), Image.LANCZOS)
+            img.save(filepath)
+            
+            # Save to database
+            image = Images(
+                ad_id=ad.id,
+                image_path=filepath,
+                original_image_path=image_file.filename
+            )
+            session.add(image)
+            session.commit()
+            
+            return {'image_path': filepath}, 201
+
+class ReviewsResource(Resource):
+    def get(self, review_id):
+        with db_session.create_session() as session:
+            review = session.query(Reviews).filter(Reviews.id == review_id).first()
+            if not review:
+                return {'message': 'Review not found'}, 404
+            
+            return review_to_dict(review)
+
+    @login_required
+    def put(self, review_id):
+        args = review_parser.parse_args()
+        with db_session.create_session() as session:
+            review = session.query(Reviews).filter(Reviews.id == review_id).first()
+            if not review:
+                return {'message': 'Review not found'}, 404
+            
+            if review.user_id != current_user.id:
+                return {'message': 'Permission denied'}, 403
+            
+            review.rating = args['rating']
+            review.comment = args['comment']
+            
+            session.commit()
+            return review_to_dict(review)
+
+    @login_required
+    def delete(self, review_id):
+        with db_session.create_session() as session:
+            review = session.query(Reviews).filter(Reviews.id == review_id).first()
+            if not review:
+                return {'message': 'Review not found'}, 404
+            
+            if review.user_id != current_user.id:
+                return {'message': 'Permission denied'}, 403
+            
+            session.delete(review)
+            session.commit()
+            return {'message': 'Review deleted'}
+
+class AdReviewsResource(Resource):
+    def get(self, ad_id):
+        with db_session.create_session() as session:
+            reviews = session.query(Reviews).filter(Reviews.ad_id == ad_id).all()
+            return [review_to_dict(review) for review in reviews]
+
+    @login_required
+    def post(self, ad_id):
+        args = review_parser.parse_args()
+        with db_session.create_session() as session:
+            # Check if user already reviewed this ad
+            existing_review = session.query(Reviews).filter(
+                Reviews.ad_id == ad_id,
+                Reviews.user_id == current_user.id
+            ).first()
+            
+            if existing_review:
+                return {'message': 'You have already reviewed this ad'}, 400
+            
+            review = Reviews(
+                user_id=current_user.id,
+                ad_id=ad_id,
+                rating=args['rating'],
+                comment=args['comment']
+            )
+            
+            session.add(review)
+            session.commit()
+            return review_to_dict(review), 201
+
+class UsersResource(Resource):
+    def get(self, user_id):
+        with db_session.create_session() as session:
+            user = session.query(Users).filter(Users.id == user_id).first()
+            if not user:
+                return {'message': 'User not found'}, 404
+            
+            avatar = session.query(Avatars).filter(Avatars.user_id == user_id).first()
+            ads = session.query(Ads).filter(Ads.user_id == user_id).all()
+            
+            result = user_to_dict(user)
+            result['avatar'] = avatar.image_path if avatar else None
+            result['ads'] = [ad_to_dict(ad) for ad in ads]
+            return result
+
+class UserAvatarResource(Resource):
+    @login_required
+    def post(self, user_id):
+        if current_user.id != int(user_id):
+            return {'message': 'Permission denied'}, 403
+        
+        args = image_upload_parser.parse_args()
+        image_file = args['image']
+        
+        save_avatar(image_file, user_id)
+        
+        with db_session.create_session() as session:
+            avatar = session.query(Avatars).filter(Avatars.user_id == user_id).first()
+            return {'avatar_path': avatar.image_path}, 201
+
+class CategoriesResource(Resource):
+    def get(self):
+        with db_session.create_session() as session:
+            categories = session.query(Categories).all()
+            return [{'id': cat.id, 'category': cat.category} for cat in categories]
+
+# Add these routes after all resource definitions
+api.add_resource(AdsListResource, '/api/ads')
+api.add_resource(AdsResource, '/api/ads/<int:ad_id>')
+api.add_resource(AdImagesResource, '/api/ads/<int:ad_id>/images')
+api.add_resource(AdReviewsResource, '/api/ads/<int:ad_id>/reviews')
+api.add_resource(ReviewsResource, '/api/reviews/<int:review_id>')
+api.add_resource(UsersResource, '/api/users/<int:user_id>')
+api.add_resource(UserAvatarResource, '/api/users/<int:user_id>/avatar')
+api.add_resource(CategoriesResource, '/api/categories')
 
 if __name__ == '__main__':
     main()
